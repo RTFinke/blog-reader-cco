@@ -5,11 +5,7 @@ const fs = require('fs');
   const browser = await puppeteer.launch();
 
   const articleUrls = [
-    'https://www.timedoctor.com/blog/how-to-get-call-center-contracts/',
-    'https://www.timedoctor.com/blog/responsible-outsourcing/',
-    'https://www.timedoctor.com/blog/call-center-workforce-management/',
-    'https://www.timedoctor.com/blog/call-center-workforce-management/',
-
+    'https://www.timedoctor.com/blog/how-to-start-a-call-center/',
   ];
 
   for (let i = 0; i < articleUrls.length; i++) {
@@ -22,10 +18,38 @@ const fs = require('fs');
     await articlePage.waitForSelector('#penci-post-entry-inner');
 
     // Extract the content
-    const content = await articlePage.$eval('#penci-post-entry-inner', (element) => element.textContent);
+    const content = await articlePage.$$eval('#penci-post-entry-inner p, #penci-post-entry-inner h3', (elements) => {
+      let paragraphs = [];
+      let currentParagraph = "";
+
+      for (const element of elements) {
+        if (element.tagName === 'P') {
+          currentParagraph += element.textContent + ' ';
+        } else if (element.tagName === 'H3') {
+          if (currentParagraph) {
+            paragraphs.push(currentParagraph.trim());
+            currentParagraph = "";
+          }
+        }
+      }
+
+      if (currentParagraph) {
+        paragraphs.push(currentParagraph.trim());
+      }
+
+      return paragraphs;
+    });
+
+    // Extract the title
+    const title = await articlePage.$eval('.header-standard.header-classic.single-header h1', (element) => element.textContent);
+
+    // Extract the publication date if available
+    const date = await articlePage.$eval('time', (element) => element.textContent);
 
     const dataToSave = {
+      title: title,
       content: content,
+      date: date, // Include the date in the JSON
     };
 
     const filename = `article_${i + 1}.json`;
@@ -33,7 +57,7 @@ const fs = require('fs');
 
     fs.writeFileSync(filename, jsonData, 'utf-8');
 
-    console.log(`Content from ${articleUrl} saved to ${filename}`);
+    console.log(`Content, title, and date from ${articleUrl} saved to ${filename}`);
 
     // Add a delay between requests (e.g., 5 seconds)
     await articlePage.waitForTimeout(5000);
@@ -43,4 +67,3 @@ const fs = require('fs');
 
   await browser.close();
 })();
-
