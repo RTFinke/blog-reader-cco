@@ -13,7 +13,7 @@ const fs = require('fs');
     const articleUrl = articleUrls[i];
 
     await articlePage.goto(articleUrl);
-//tests
+
     // Wait for the target element to be available
     await articlePage.waitForSelector('#penci-post-entry-inner');
 
