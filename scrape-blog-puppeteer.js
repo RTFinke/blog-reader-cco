@@ -5,7 +5,7 @@ const fs = require('fs');
   const browser = await puppeteer.launch();
 
   const articleUrls = [
-    'https://www.timedoctor.com/blog/how-to-start-a-call-center/',
+    'https://test.finke.pl/blog/call-center-articles/',
   ];
 
   for (let i = 0; i < articleUrls.length; i++) {
