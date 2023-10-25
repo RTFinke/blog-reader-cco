@@ -4,32 +4,41 @@ const fs = require('fs');
 (async () => {
   const browser = await puppeteer.launch();
 
-  const articleUrls = [
-    'https://test.finke.pl/blog/call-center-articles/',
-  ];
+  const blogUrl = 'https://test.finke.pl/blog/category/bpo/';
+  const maxArticles = 5;
 
-  for (let i = 0; i < articleUrls.length; i++) {
+  const page = await browser.newPage();
+  await page.goto(blogUrl);
+
+  // Wait for the target elements to be available
+  await page.waitForSelector('.penci-entry-title a');
+
+  const articleData = await page.$$eval('.penci-entry-title a', (links) => {
+    return links.slice(0, 5).map((link) => {
+      return {
+        title: link.textContent,
+        link: link.href,
+      };
+    });
+  });
+
+  for (let i = 0; i < articleData.length; i++) {
+    const { title, link } = articleData[i];
+    console.log(`Scraping content for article: ${title}`);
+
     const articlePage = await browser.newPage();
-    const articleUrl = articleUrls[i];
+    await articlePage.goto(link);
 
-    await articlePage.goto(articleUrl);
-
-    // Wait for the target element to be available
+    // Wait for the target element to be available on the article page
     await articlePage.waitForSelector('#penci-post-entry-inner');
 
-    // Extract the content
-    const content = await articlePage.$$eval('#penci-post-entry-inner p, #penci-post-entry-inner h3', (elements) => {
+    const content = await articlePage.$$eval('#penci-post-entry-inner p, #penci-post-entry-inner h2, #penci-post-entry-inner h3', (elements) => {
       let paragraphs = [];
       let currentParagraph = "";
 
       for (const element of elements) {
-        if (element.tagName === 'P') {
+        if (element.tagName === 'P' || element.tagName === 'H2' || element.tagName === 'H3') {
           currentParagraph += element.textContent + ' ';
-        } else if (element.tagName === 'H3') {
-          if (currentParagraph) {
-            paragraphs.push(currentParagraph.trim());
-            currentParagraph = "";
-          }
         }
       }
 
@@ -40,16 +49,9 @@ const fs = require('fs');
       return paragraphs;
     });
 
-    // Extract the title
-    const title = await articlePage.$eval('.header-standard.header-classic.single-header h1', (element) => element.textContent);
-
-    // Extract the publication date if available
-    const date = await articlePage.$eval('time', (element) => element.textContent);
-
     const dataToSave = {
       title: title,
       content: content,
-      date: date, // Include the date in the JSON
     };
 
     const filename = `article_${i + 1}.json`;
@@ -57,10 +59,7 @@ const fs = require('fs');
 
     fs.writeFileSync(filename, jsonData, 'utf-8');
 
-    console.log(`Content, title, and date from ${articleUrl} saved to ${filename}`);
-
-    // Add a delay between requests (e.g., 5 seconds)
-    await articlePage.waitForTimeout(5000);
+    console.log(`Content and title from article "${title}" saved to ${filename}`);
 
     await articlePage.close();
   }
