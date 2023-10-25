@@ -49,9 +49,18 @@ const fs = require('fs');
       return paragraphs;
     });
 
+<<<<<<< Updated upstream
     const dataToSave = {
       title: title,
       content: content,
+=======
+    const date = await articlePage.$eval('time', (element) => element.textContent); // Updated selector to 'time'
+
+    const dataToSave = {
+      title: title,
+      content: content,
+      date: date,
+>>>>>>> Stashed changes
     };
 
     const filename = `article_${i + 1}.json`;
@@ -59,7 +68,11 @@ const fs = require('fs');
 
     fs.writeFileSync(filename, jsonData, 'utf-8');
 
+<<<<<<< Updated upstream
     console.log(`Content and title from article "${title}" saved to ${filename}`);
+=======
+    console.log(`Content, title, and date from article "${title}" saved to ${filename}`);
+>>>>>>> Stashed changes
 
     await articlePage.close();
   }
