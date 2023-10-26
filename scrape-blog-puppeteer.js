@@ -5,76 +5,82 @@ const fs = require('fs');
   const browser = await puppeteer.launch();
 
   const blogUrl = 'https://test.finke.pl/blog/category/bpo/';
-  const maxArticles = 5;
+  const maxArticles = 30; // Maximum number of articles to scrape
+  let scrapedArticles = 0; // Counter for scraped articles
 
   const page = await browser.newPage();
   await page.goto(blogUrl);
 
-  // Wait for the target elements to be available
-  await page.waitForSelector('.penci-entry-title a');
+  while (scrapedArticles < maxArticles) {
+    // Wait for the target elements to be available
+    await page.waitForSelector('.penci-entry-title a');
 
-  const articleData = await page.$$eval('.penci-entry-title a', (links) => {
-    return links.slice(0, 5).map((link) => {
-      return {
-        title: link.textContent,
-        link: link.href,
-      };
+    const articleData = await page.$$eval('.penci-entry-title a', (links) => {
+      return links.slice(0, 5).map((link) => {
+        return {
+          title: link.textContent,
+          link: link.href,
+        };
+      });
     });
-  });
 
-  for (let i = 0; i < articleData.length; i++) {
-    const { title, link } = articleData[i];
-    console.log(`Scraping content for article: ${title}`);
+    for (let i = 0; i < articleData.length; i++) {
+      if (scrapedArticles >= maxArticles) {
+        break;
+      }
 
-    const articlePage = await browser.newPage();
-    await articlePage.goto(link);
+      const { title, link } = articleData[i];
+      console.log(`Scraping content for article: ${title}`);
 
-    // Wait for the target element to be available on the article page
-    await articlePage.waitForSelector('#penci-post-entry-inner');
+      const articlePage = await browser.newPage();
+      await articlePage.goto(link);
 
-    const content = await articlePage.$$eval('#penci-post-entry-inner p, #penci-post-entry-inner h2, #penci-post-entry-inner h3', (elements) => {
-      let paragraphs = [];
-      let currentParagraph = "";
+      // Wait for the target element to be available on the article page
+      await articlePage.waitForSelector('#penci-post-entry-inner');
 
-      for (const element of elements) {
-        if (element.tagName === 'P' || element.tagName === 'H2' || element.tagName === 'H3') {
-          currentParagraph += element.textContent + ' ';
+      const content = await articlePage.$$eval('#penci-post-entry-inner p, #penci-post-entry-inner h2, #penci-post-entry-inner h3', (elements) => {
+        let paragraphs = [];
+        let currentParagraph = "";
+
+        for (const element of elements) {
+          if (element.tagName === 'P' || element.tagName === 'H2' || element.tagName === 'H3') {
+            currentParagraph += element.textContent + ' ';
+          }
         }
-      }
 
-      if (currentParagraph) {
-        paragraphs.push(currentParagraph.trim());
-      }
+        if (currentParagraph) {
+          paragraphs.push(currentParagraph.trim());
+        }
 
-      return paragraphs;
-    });
+        return paragraphs;
+      });
 
-<<<<<<< Updated upstream
-    const dataToSave = {
-      title: title,
-      content: content,
-=======
-    const date = await articlePage.$eval('time', (element) => element.textContent); // Updated selector to 'time'
+      const date = await articlePage.$eval('time', (element) => element.textContent);
 
-    const dataToSave = {
-      title: title,
-      content: content,
-      date: date,
->>>>>>> Stashed changes
-    };
+      const dataToSave = {
+        title: title,
+        content: content,
+        date: date,
+      };
 
-    const filename = `article_${i + 1}.json`;
-    const jsonData = JSON.stringify(dataToSave, null, 2);
+      const filename = `article_${scrapedArticles + 1}.json`;
+      const jsonData = JSON.stringify(dataToSave, null, 2);
 
-    fs.writeFileSync(filename, jsonData, 'utf-8');
+      fs.writeFileSync(filename, jsonData, 'utf-8');
 
-<<<<<<< Updated upstream
-    console.log(`Content and title from article "${title}" saved to ${filename}`);
-=======
-    console.log(`Content, title, and date from article "${title}" saved to ${filename}`);
->>>>>>> Stashed changes
+      console.log(`Content, title, and date from article "${title}" saved to ${filename}`);
 
-    await articlePage.close();
+      await articlePage.close();
+      scrapedArticles++;
+    }
+
+    // Navigate to the next page
+    const nextPage = await page.$('.next.page-numbers');
+    if (!nextPage) {
+      break; // No more pages to scrape
+    }
+    await nextPage.click();
+    await page.waitForNavigation();
   }
 
   await browser.close();
