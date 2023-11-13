@@ -1,67 +1,74 @@
+// Importing necessary modules
 const puppeteer = require('puppeteer');
 const fs = require('fs');
 
+// Using an asynchronous IIFE (Immediately Invoked Function Expression) for better control of asynchronous operations
 (async () => {
-  // Inicjalizacja przeglądarki Puppeteer
+  // Launching a headless browser instance using Puppeteer
   const browser = await puppeteer.launch();
-
-  // Adres URL strony, z której będą pobierane artykuły
-  const blogUrl = 'https://test.finke.pl/blog/category/bpo/';
-
-  // Maksymalna liczba artykułów do wyodrębnienia
-  const maxArticles = 30;
-
-  // Licznik wyodrębnionych artykułów
-  let scrapedArticles = 0;
-
-  // Tworzenie nowej strony w przeglądarce
+  // Opening a new page in the browser
   const page = await browser.newPage();
 
-  // Przejście do strony głównej
+  // Setting the URL of the blog to be scraped
+  const blogUrl = 'https://www.callcentrehelper.com/tag/cx';
+  // Navigating to the specified blog URL
   await page.goto(blogUrl);
 
-  // Rozpoczęcie pętli wyodrębniania artykułów
-  while (scrapedArticles < maxArticles) {
-    // Oczekiwanie na dostępność elementów docelowych
-    await page.waitForSelector('.penci-entry-title a');
+  // Setting the maximum number of articles to scrape
+  const maxArticles = 10;
+  // Initializing a counter for the number of scraped articles
+  let scrapedArticles = 0;
 
-    // Wyodrębnienie informacji o artykułach na stronie
-    const articleData = await page.$$eval('.penci-entry-title a', (links) => {
-      return links.slice(0, 5).map((link) => {
+  // Looping through the articles until the specified number is reached
+  while (scrapedArticles < maxArticles) {
+    // Waiting for the container that holds the articles to be present in the DOM
+    await page.waitForSelector('.category-article-container');
+
+    // Extracting data for each article on the page
+    const articleData = await page.$$eval('.category-article-container', (articles) => {
+      return articles.slice(0, 10).map((article) => {
+        // Extracting title and link for each article
+        const title = article.querySelector('.home-article-title a').textContent;
+        const link = article.querySelector('.home-article-title a').getAttribute('href');
         return {
-          title: link.textContent,
-          link: link.href,
+          title,
+          link,
         };
       });
     });
 
-    // Iteracja po wyodrębnionych danych artykułów
+    // Processing each article concurrently using Promise.all
     const articlePromises = articleData.map(async (data, index) => {
+      // Checking if the maximum number of articles has been reached
       if (scrapedArticles >= maxArticles) {
         return;
       }
 
+      // Destructuring title and link from the article data
       const { title, link } = data;
       console.log(`Scraping content for article: ${title}`);
 
-      // Tworzenie nowej strony dla artykułu
+      // Opening a new page for the specific article
       const articlePage = await browser.newPage();
+      // Navigating to the article's link
       await articlePage.goto(link);
 
-      // Oczekiwanie na dostępność elementu docelowego na stronie artykułu
-      await articlePage.waitForSelector('#penci-post-entry-inner');
+      // Adjusted selector for waiting for the content to be present
+      await articlePage.waitForSelector('.entry-content');
 
-      // Wyodrębnienie treści artykułu
-      const content = await articlePage.$$eval('#penci-post-entry-inner p, #penci-post-entry-inner h2, #penci-post-entry-inner h3', (elements) => {
+      // Adjusted selector for extracting content (paragraphs, h2, h3)
+      const content = await articlePage.$$eval('.entry-content p, .entry-content h2, .entry-content h3', (elements) => {
         let paragraphs = [];
         let currentParagraph = "";
 
+        // Iterating through content elements and building paragraphs
         for (const element of elements) {
           if (element.tagName === 'P' || element.tagName === 'H2' || element.tagName === 'H3') {
-            currentParagraph += element.textContent + ' ';
+            currentParagraph += element.textContent + '\n\n';
           }
         }
 
+        // Adding the last paragraph if it exists
         if (currentParagraph) {
           paragraphs.push(currentParagraph.trim());
         }
@@ -69,46 +76,47 @@ const fs = require('fs');
         return paragraphs;
       });
 
-      // Wyodrębnienie daty artykułu
-      const date = await articlePage.$eval('time', (element) => element.textContent);
+      // Joining content paragraphs into a formatted string
+      const formattedContent = content.join('\n\n');
 
-      // Przygotowanie danych do zapisu w formacie JSON
+      // Adjusted selector for extracting date
+      const date = await articlePage.$eval('.entry-meta time', (element) => element.textContent);
+
+      // Creating an object with title, content, and date for the article
       const dataToSave = {
         title: title,
-        content: content,
+        content: formattedContent,
         date: date,
       };
 
-      // Generowanie nazwy pliku JSON
+      // Creating a filename for the JSON file
       const filename = `article_${scrapedArticles + 1}.json`;
-
-      // Konwersja danych do formatu JSON
+      // Converting the data to JSON format and writing it to a file
       const jsonData = JSON.stringify(dataToSave, null, 2);
-
-      // Zapis danych do pliku
       fs.writeFileSync(filename, jsonData, 'utf-8');
-
       console.log(`Content, title, and date from article "${title}" saved to ${filename}`);
 
-      // Zamknięcie strony artykułu
+      // Closing the article page
       await articlePage.close();
+      // Incrementing the counter for scraped articles
       scrapedArticles++;
     });
 
-    // Oczekiwanie na zakończenie wszystkich obietnic (asynchronicznych operacji)
+    // Waiting for all article promises to resolve before moving to the next page
     await Promise.all(articlePromises);
 
-    // Nawigacja do następnej strony
-    const nextPage = await page.$('.next.page-numbers');
+    // Adjusted selector for the "Next" button on the pagination
+    const nextPage = await page.$('.category-ribbon .article-next a');
+    // Breaking out of the loop if there is no "Next" button
     if (!nextPage) {
-      break; // Brak kolejnych stron do przeszukania
+      break;
     }
 
-    // Kliknięcie na przycisk "Następna strona"
+    // Clicking the "Next" button and waiting for navigation to complete
     await nextPage.click();
     await page.waitForNavigation();
   }
 
-  // Zamknięcie przeglądarki
+  // Closing the browser after scraping is complete
   await browser.close();
 })();
