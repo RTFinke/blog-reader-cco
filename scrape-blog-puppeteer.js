@@ -54,10 +54,10 @@ const fs = require('fs');
       await articlePage.goto(link);
 
       // Adjusted selector for waiting for the content to be present
-      await articlePage.waitForSelector('.entry-content');
+      await articlePage.waitForSelector('.article-content');
 
       // Adjusted selector for extracting content (paragraphs, h2, h3)
-      const content = await articlePage.$$eval('.entry-content p, .entry-content h2, .entry-content h3', (elements) => {
+      const content = await articlePage.$$eval('.article-content p, .article-content h2, .article-content h3', (elements) => {
         let paragraphs = [];
         let currentParagraph = "";
 
@@ -80,13 +80,11 @@ const fs = require('fs');
       const formattedContent = content.join('\n\n');
 
       // Adjusted selector for extracting date
-      const date = await articlePage.$eval('.entry-meta time', (element) => element.textContent);
 
       // Creating an object with title, content, and date for the article
       const dataToSave = {
         title: title,
         content: formattedContent,
-        date: date,
       };
 
       // Creating a filename for the JSON file
