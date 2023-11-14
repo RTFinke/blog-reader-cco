@@ -58,28 +58,18 @@ const fs = require('fs');
 
       // Adjusted selector for extracting content (paragraphs, h2, h3)
       const content = await articlePage.$$eval('.article-content p, .article-content h2, .article-content h3', (elements) => {
-        let currentSection = "";
-        let sections = [];
+        let paragraphs = [];
 
         for (const element of elements) {
-          if (element.tagName === 'P' || element.tagName === 'H2' || element.tagName === 'H3') {
-            if (currentSection !== "") {
-              sections.push(currentSection.trim());
-            }
-
-            currentSection = `<${element.tagName.toLowerCase()}>${element.textContent}</${element.tagName.toLowerCase()}>`;
-          }
+          // Extracting text content and replacing HTML tags with newlines
+          const paragraphText = element.textContent.replace(/<\/?[^>]+(>|$)/g, '\n');
+          paragraphs.push(paragraphText.trim());
         }
 
-        // Add the last section
-        if (currentSection !== "") {
-          sections.push(currentSection.trim());
-        }
-
-        return sections;
+        return paragraphs;
       });
 
-      // Joining content sections into a formatted string
+      // Joining content paragraphs into a formatted string
       const formattedContent = content.join('\n');
 
       // Adjusted selector for extracting date
