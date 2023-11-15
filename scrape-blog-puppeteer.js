@@ -58,24 +58,21 @@ const fs = require('fs');
 
       // Adjusted selector for extracting content (paragraphs, h2, h3, ul, ol)
       const content = await articlePage.$$eval('.article-content p, .article-content h2, .article-content h3, .article-content ul, .article-content ol', (elements) => {
-        let paragraphs = [];
+        let elementsArray = [];
 
         for (const element of elements) {
           // Extracting text content and replacing HTML tags with newlines
-          const paragraphText = element.textContent.replace(/<\/?[^>]+(>|$)/g, '\n');
-          paragraphs.push(paragraphText.trim());
+          const elementText = element.textContent.replace(/<\/?[^>]+(>|$)/g, '\n');
+          elementsArray.push(elementText.trim());
         }
 
-        return paragraphs;
+        return elementsArray;
       });
-
-      // Joining content paragraphs into a formatted string
-      const formattedContent = content.join('\n');
 
       // Creating an object with title, content, and date for the article
       const dataToSave = {
         title: title,
-        content: formattedContent,
+        content: content,
       };
 
       // Creating a filename for the JSON file
@@ -83,7 +80,7 @@ const fs = require('fs');
       // Converting the data to JSON format and writing it to a file
       const jsonData = JSON.stringify(dataToSave, null, 2);
       fs.writeFileSync(filename, jsonData, 'utf-8');
-      console.log(`Content, title, and date from article "${title}" saved to ${filename}`);
+      console.log(`Content from article "${title}" saved to ${filename}`);
 
       // Closing the article page
       await articlePage.close();
