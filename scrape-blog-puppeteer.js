@@ -10,7 +10,7 @@ const fs = require('fs');
   const page = await browser.newPage();
 
   // Setting the URL of the blog to be scraped
-  const blogUrl = 'https://www.callcentrehelper.com/tag/cx';
+  const blogUrl = 'https://www.callcentrehelper.com/tag/cx/';
   // Navigating to the specified blog URL
   await page.goto(blogUrl);
 
@@ -56,8 +56,8 @@ const fs = require('fs');
       // Adjusted selector for waiting for the content to be present
       await articlePage.waitForSelector('.article-content');
 
-      // Adjusted selector for extracting content (paragraphs, h2, h3)
-      const content = await articlePage.$$eval('.article-content p, .article-content h2, .article-content h3', (elements) => {
+      // Adjusted selector for extracting content (paragraphs, h2, h3, ul, ol)
+      const content = await articlePage.$$eval('.article-content p, .article-content h2, .article-content h3, .article-content ul, .article-content ol', (elements) => {
         let paragraphs = [];
 
         for (const element of elements) {
@@ -71,8 +71,6 @@ const fs = require('fs');
 
       // Joining content paragraphs into a formatted string
       const formattedContent = content.join('\n');
-
-      // Adjusted selector for extracting date
 
       // Creating an object with title, content, and date for the article
       const dataToSave = {
