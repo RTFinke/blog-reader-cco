@@ -10,7 +10,7 @@ const fs = require('fs');
   const page = await browser.newPage();
 
   // Setting the URL of the blog to be scraped
-  const blogUrl = 'https://www.callcentrehelper.com/tag/cx/';
+  const blogUrl = 'https://www.callcentrehelper.com/tag/cx/page/12';
   // Navigating to the specified blog URL
   await page.goto(blogUrl);
 
@@ -58,15 +58,8 @@ const fs = require('fs');
 
       // Adjusted selector for extracting content (paragraphs, h2, h3, ul, ol)
       const content = await articlePage.$$eval('.article-content p, .article-content h2, .article-content h3, .article-content ul, .article-content ol', (elements) => {
-        let elementsArray = [];
-
-        for (const element of elements) {
-          // Extracting text content and replacing HTML tags with newlines
-          const elementText = element.textContent.replace(/<\/?[^>]+(>|$)/g, '\n');
-          elementsArray.push(elementText.trim());
-        }
-
-        return elementsArray;
+        // Use map to create an array of extracted text content for each element
+        return elements.map((element) => element.textContent.replace(/<\/?[^>]+(>|$)/g, '\n').trim());
       });
 
       // Creating an object with title, content, and date for the article
